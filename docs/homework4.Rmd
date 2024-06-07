@@ -1,0 +1,224 @@
+---
+title: "homework4"
+author: "Yuminyan"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(sf)
+library(cowplot)
+library(reshape2)
+library(ggsci)
+```
+
+#北京与厦门pm2.5对比
+```{r}
+d0 <- read.csv("PM2.5_2024Q1.csv")
+dim(d0)
+names(d0)
+```
+
+```{r}
+#北京空气质量
+db <- 
+d0 %>% 
+  filter(city=="北京") %>% 
+  filter(value!="NA") %>% 
+  group_by(date) %>% 
+  summarise(mean_bpm=mean(value))
+```
+
+```{r}
+#厦门空气质量
+dx <- 
+d0 %>% 
+  filter(city=="厦门") %>% 
+  filter(value!="NA") %>% 
+  group_by(date) %>% 
+  summarise(mean_xpm=mean(value))
+```
+
+```{r}
+#合并
+dall <-
+db %>% 
+  left_join(dx, "date") %>% 
+  mutate(newdate=ymd(date))
+```
+
+```{r}
+dfinal<-melt(dall,id=c("newdate","date"))
+```
+
+```{r}
+dfinal$variable<-factor(dfinal$variable,
+                       levels = c('mean_bpm','mean_xpm'),
+                       labels = c("Beijing","Xiamen"))
+```
+
+
+```{r}
+Sys.setlocale("LC_TIME","English")
+```
+
+
+```{r}
+
+  ggplot(dfinal,aes(newdate,value,color=variable))+
+  geom_line() + 
+  geom_point()+
+  theme_bw()+
+  labs(x = "Date", y = expression(paste(PM[2.5] , ' '(µg/m^3))),
+       title = expression(paste("Beijing's and Xiamen's ",PM[2.5])))+
+  scale_x_date(date_breaks = "1 months")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(legend.title = element_blank())+
+  scale_color_lancet()  
+  ggsave("bxpm25.png", width=492/90,height=311/90, dpi=900)
+
+#http://127.0.0.1:36929/graphics/plot_zoom_png?width=492&height=311
+  
+```
+    2024年1月1日-4月6日，北京、厦门两市PM2.5全市均值的时间序列，总体来看，厦门的PM2.5浓度小于北京。
+
+
+#中国各市
+
+
+```{r}
+dcx<-
+  d0 %>% 
+  filter(date=="20240209") %>% 
+  filter(value!="NA") %>% 
+  group_by(city) %>% 
+  summarise(cxmean=mean(value))
+```
+
+```{r}
+dqm<-
+  d0 %>% 
+  filter(date=="20240405") %>% 
+  filter(value!="NA") %>% 
+  group_by(city) %>% 
+  summarise(qmmean=mean(value))
+```
+
+
+
+
+```{r}
+dcn <- st_read("C:/Users/26958/Desktop/mapall/allmap/maps/aliyun/china_city_aliyun.shp")
+
+```
+
+```{r}
+dcn$nam_cty[dcn$nm_prvn == "北京市"] <- "北京"
+dcn$nam_cty[dcn$nm_prvn == "上海市"] <- "上海"
+dcn$nam_cty[dcn$nm_prvn == "天津市"] <- "天津"
+dcn$nam_cty[dcn$nm_prvn == "重庆市"] <- "重庆"
+dcn$nam_cty <- gsub("市", "", dcn$nam_cty)
+#西藏
+dcn$nam_cty[dcn$nam_cty == "那曲"] <- "那曲地区"
+#新疆改
+dcn$nam_cty[dcn$nam_cty == "巴音郭楞蒙古自治州"] <- "巴音郭楞州"
+dcn$nam_cty[dcn$nam_cty == "吐鲁番"] <- "吐鲁番地区"
+dcn$nam_cty[dcn$nam_cty == "哈密"] <- "哈密地区"
+dcn$nam_cty[dcn$nam_cty == "伊犁哈萨克自治州"] <- "伊犁哈萨克州"
+dcn$nam_cty[dcn$nam_cty == "昌吉回族自治州"] <- "昌吉州"
+#无 阿拉尔、图木舒克、北屯、铁门关、双河、可克达拉、昆玉、胡杨河PM2.5数据
+
+#甘肃改
+dcn$nam_cty[dcn$nam_cty == "甘南藏族自治州"] <- "甘南州"
+
+#青海改
+dcn$nam_cty[dcn$nam_cty == "海东"] <- "海东地区"
+
+#青海改
+dcn$nam_cty[dcn$nam_cty == "铜仁"] <- "铜仁地区"
+
+#云南改
+dcn$nam_cty[dcn$nam_cty == "楚雄彝族自治州"] <- "楚雄州"
+dcn$nam_cty[dcn$nam_cty == "大理白族自治州"] <- "大理州"
+dcn$nam_cty[dcn$nam_cty == "西双版纳傣族自治州"] <- "西双版纳州"
+dcn$nam_cty[dcn$nam_cty == "文山壮族苗族自治州"] <- "文山州"
+dcn$nam_cty[dcn$nam_cty == "红河哈尼族彝族自治州"] <- "红河州"
+dcn$nam_cty[dcn$nam_cty == "德宏傣族景颇族自治州"] <- "德宏州"
+dcn$nam_cty[dcn$nam_cty == "怒江傈僳族自治州"] <- "怒江州"
+dcn$nam_cty[dcn$nam_cty == "迪庆藏族自治州"] <- "迪庆州"
+
+#湖南改
+dcn$nam_cty[dcn$nam_cty == "湘西土家族苗族自治州"] <- "湘西州"
+
+#dcn$nam_cty[dcn$nm_prvn == "香港特别行政区"] <- "香港"
+#dcn$nam_cty[dcn$nm_prvn == "澳门特别行政区"] <- "澳门"
+#dcn$nam_cty[dcn$nm_prvn == "台湾省"] <- "台湾" 
+
+#海南 无 三沙、五指山、琼海、文昌、万宁、东方、定安县、屯昌县、澄迈县、临高县、白沙黎族自治县、昌江黎族自治县、乐东黎族自治县、陵水黎族自治县、保亭黎族苗族自治县、琼中黎族苗族自治县PM2.5数据
+
+#湖北 无神农架林区、仙桃、潜江、天门PM2.5数据
+#河南 无济源PM2.5数据
+#香港、澳门、台湾 无PM2.5数据
+```
+
+
+```{r}
+pal_GrBr <- c("#543005","#8c510a","#bf812d","#dfc27d",
+ "#c7eae5","#80cdc1")
+p_cx<-
+dcn %>% 
+  left_join(dcx, by = c("nam_cty" = "city")) %>% 
+  ggplot()+
+  geom_sf(aes(fill=cxmean))+
+  theme_bw()+
+  scale_fill_gradientn( limits = c(0, 400),
+  colors=rev(pal_GrBr), na.value = "white")+
+  theme(plot.margin = margin(4, 1, 4, 1))
+p_cx
+```
+
+
+```{r}
+pal_GrBr <- c("#543005","#8c510a","#bf812d","#dfc27d",
+ "#c7eae5","#80cdc1")
+p_qm <-
+dcn %>% 
+  left_join(dqm, by = c("nam_cty" = "city")) %>% 
+  ggplot()+
+  geom_sf(aes(fill=qmmean))+
+  theme_bw()+
+  scale_fill_gradientn( limits=c(0,400),
+  colors=rev(pal_GrBr), na.value = "white")+
+  labs(fill = expression(paste(PM[2.5] , ' '(µg/m^3))))+
+  theme(plot.margin = margin(4, 0, 4, 0))
+p_qm
+```
+
+```{r}
+
+prow<-
+
+plot_grid(p_cx+theme(legend.position="none"),
+          p_qm+theme(legend.position="none"),
+          nrow=1,align = "v",axis = "bt",labels = "AUTO",label_x = 0, label_y = 1)
+prow
+```
+
+```{r}
+legend <- get_legend(
+  p_qm 
+)#+ theme(legend.box.margin = margin(0, 0, 0, 12))
+```
+
+```{r}
+plot_grid(prow, legend, rel_widths = c(3, .4))
+ggsave("chinapm25.png", width=944/90,height=440/90, dpi=900)
+#http://127.0.0.1:27835/graphics/plot_zoom_png?width=944&height=440
+```
+
+A图为除夕期间全国PM2.5浓度，B图为清明期间全国PM2.5浓度，总体来看，清明期间PM2.5浓度较低
